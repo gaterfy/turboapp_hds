@@ -3,7 +3,7 @@
 module Api
   module V1
     class ConsultationsController < Api::V1::BaseController
-      before_action :set_consultation, only: %i[show update complete seal]
+      before_action :set_consultation, only: %i[show update complete seal ai_report]
 
       def index
         consultations = policy_scope(Consultation)
@@ -52,6 +52,35 @@ module Api
         @consultation.complete!(chart_snapshot: chart_snapshot)
         audit "status_changed", resource: @consultation, metadata: { new_status: "completed" }
         render_success @consultation.as_api_json
+      end
+
+      def ai_report
+        authorize @consultation, :show?
+
+        patient_name = @consultation.patient_record.patient.then do |p|
+          "#{p.first_name} #{p.last_name}"
+        end
+
+        transcript_lines = Array(params[:transcript_lines])
+        colleague_kind   = params[:colleague_kind].presence || "referring_dentist"
+
+        result = ClinicalAi::ConsultationReportService.new.call(
+          transcript_lines: transcript_lines,
+          patient_name:     patient_name,
+          colleague_kind:   colleague_kind
+        )
+
+        @consultation.update!(
+          ai_generated_report:  result[:patient_report],
+          ai_colleague_letter:  { subject: result[:colleague_subject], body: result[:colleague_body] },
+          ai_generated_at:      Time.current,
+          ai_model_used:        result[:model_used]
+        )
+
+        audit "ai_report_generated", resource: @consultation,
+              metadata: { model: result[:model_used], colleague_kind: colleague_kind }
+
+        render_success result
       end
 
       def seal

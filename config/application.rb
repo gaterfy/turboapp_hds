@@ -22,6 +22,7 @@ module TurboappHds
     # in config/environments, which are processed later.
     #
     config.time_zone = "UTC"
+    config.version   = ENV.fetch("APP_VERSION", "1.0.0")
 
     config.middleware.use Rack::Attack
 

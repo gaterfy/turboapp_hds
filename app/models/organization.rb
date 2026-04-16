@@ -10,9 +10,10 @@ class Organization < ApplicationRecord
   has_many :patients,        dependent: :restrict_with_error
   has_many :patient_records, dependent: :restrict_with_error
   has_many :appointments,    dependent: :restrict_with_error
-  has_many :consultations,   dependent: :restrict_with_error
-  has_many :quotes,          dependent: :restrict_with_error
-  has_many :prescriptions,   dependent: :restrict_with_error
+  has_many :consultations,    dependent: :restrict_with_error
+  has_many :quotes,           dependent: :restrict_with_error
+  has_many :prescriptions,    dependent: :restrict_with_error
+  has_many :treatment_plans,  dependent: :restrict_with_error
 
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true,

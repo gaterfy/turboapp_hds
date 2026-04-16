@@ -18,6 +18,8 @@ gem "stimulus-rails"
 gem "jbuilder"
 
 gem "kaminari"
+gem "rotp"
+gem "rqrcode"
 gem "aasm"
 
 # Authentication and security

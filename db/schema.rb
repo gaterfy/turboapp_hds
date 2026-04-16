@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_16_140005) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_16_150004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -32,10 +32,15 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_16_140005) do
     t.string "jti_secret", default: -> { "gen_random_uuid()" }, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "mfa_secret"
+    t.boolean "mfa_enabled", default: false, null: false
+    t.datetime "mfa_enabled_at"
+    t.text "mfa_backup_codes", default: [], array: true
     t.index ["account_type"], name: "index_accounts_on_account_type"
     t.index ["active"], name: "index_accounts_on_active"
     t.index ["email"], name: "index_accounts_on_email", unique: true
     t.index ["jti_secret"], name: "index_accounts_on_jti_secret", unique: true
+    t.index ["mfa_enabled"], name: "index_accounts_on_mfa_enabled"
     t.index ["reset_password_token"], name: "index_accounts_on_reset_password_token", unique: true
     t.index ["unlock_token"], name: "index_accounts_on_unlock_token", unique: true
   end
@@ -104,6 +109,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_16_140005) do
     t.datetime "locked_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "ai_generated_report"
+    t.jsonb "ai_colleague_letter", default: {}
+    t.datetime "ai_generated_at"
+    t.string "ai_model_used"
     t.index ["appointment_id"], name: "index_consultations_on_appointment_id"
     t.index ["consultation_date"], name: "index_consultations_on_consultation_date"
     t.index ["organization_id", "consultation_date"], name: "index_consultations_on_organization_id_and_consultation_date"
@@ -303,12 +312,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_16_140005) do
     t.datetime "expired_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "treatment_plan_id"
     t.index ["organization_id"], name: "index_quotes_on_organization_id"
     t.index ["patient_record_id"], name: "index_quotes_on_patient_record_id"
     t.index ["practitioner_id"], name: "index_quotes_on_practitioner_id"
     t.index ["quote_number"], name: "index_quotes_on_quote_number", unique: true
     t.index ["signature_submission_id"], name: "index_quotes_on_signature_submission_id"
     t.index ["status"], name: "index_quotes_on_status"
+    t.index ["treatment_plan_id"], name: "index_quotes_on_treatment_plan_id"
   end
 
   create_table "refresh_tokens", force: :cascade do |t|
@@ -325,6 +336,44 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_16_140005) do
     t.index ["expires_at"], name: "index_refresh_tokens_on_expires_at"
     t.index ["revoked_at"], name: "index_refresh_tokens_on_revoked_at"
     t.index ["token"], name: "index_refresh_tokens_on_token", unique: true
+  end
+
+  create_table "treatment_plan_items", force: :cascade do |t|
+    t.bigint "treatment_plan_id", null: false
+    t.string "procedure_code"
+    t.string "label", null: false
+    t.string "tooth_ref"
+    t.integer "quantity", default: 1, null: false
+    t.decimal "unit_fee", precision: 10, scale: 2, null: false
+    t.integer "position", default: 0, null: false
+    t.text "notes"
+    t.boolean "completed", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["position"], name: "index_treatment_plan_items_on_position"
+    t.index ["treatment_plan_id"], name: "index_treatment_plan_items_on_treatment_plan_id"
+  end
+
+  create_table "treatment_plans", force: :cascade do |t|
+    t.bigint "patient_record_id", null: false
+    t.bigint "practitioner_id", null: false
+    t.bigint "organization_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.string "status", default: "proposed", null: false
+    t.integer "session_count"
+    t.decimal "estimated_total", precision: 10, scale: 2, default: "0.0"
+    t.decimal "accepted_total", precision: 10, scale: 2
+    t.datetime "accepted_at"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "cancelled_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_treatment_plans_on_organization_id"
+    t.index ["patient_record_id"], name: "index_treatment_plans_on_patient_record_id"
+    t.index ["practitioner_id"], name: "index_treatment_plans_on_practitioner_id"
+    t.index ["status"], name: "index_treatment_plans_on_status"
   end
 
   add_foreign_key "appointments", "organizations"
@@ -352,5 +401,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_16_140005) do
   add_foreign_key "quotes", "organizations"
   add_foreign_key "quotes", "patient_records"
   add_foreign_key "quotes", "practitioners"
+  add_foreign_key "quotes", "treatment_plans"
   add_foreign_key "refresh_tokens", "accounts"
+  add_foreign_key "treatment_plan_items", "treatment_plans"
+  add_foreign_key "treatment_plans", "organizations"
+  add_foreign_key "treatment_plans", "patient_records"
+  add_foreign_key "treatment_plans", "practitioners"
 end

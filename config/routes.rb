@@ -7,11 +7,22 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      # Public health endpoint (no auth)
+      get "health", to: "health#show"
+
       # Authentication (no JWT required)
       namespace :auth do
         post   "login",   to: "sessions#create"
         delete "logout",  to: "sessions#destroy"
         post   "refresh", to: "refresh_tokens#create"
+
+        # MFA (requires valid access token)
+        scope :mfa do
+          post   "setup",   to: "mfa#setup"
+          post   "confirm", to: "mfa#confirm"
+          post   "verify",  to: "mfa#verify"
+          delete "disable", to: "mfa#disable"
+        end
       end
 
       # Authenticated + organization-scoped endpoints
@@ -37,7 +48,20 @@ Rails.application.routes.draw do
         member do
           patch :complete
           patch :seal
+          post  :ai_report
         end
+      end
+
+      # Treatment plans
+      resources :treatment_plans, only: %i[index show create update] do
+        member do
+          patch :accept
+          patch :start
+          patch :complete
+          patch :cancel
+        end
+        resources :items, only: %i[create update destroy],
+                          controller: "treatment_plan_items"
       end
 
       resources :quotes, only: %i[index show create update] do
@@ -59,6 +83,16 @@ Rails.application.routes.draw do
         end
         resources :line_items, only: %i[create update destroy],
                                controller: "prescription_line_items"
+      end
+      # Patient portal (patient accounts only)
+      namespace :patient_portal do
+        resource :record, only: :show, controller: "records" do
+          get :appointments
+          get :consultations
+          get :quotes
+          get :prescriptions
+          get :treatment_plans
+        end
       end
     end
   end

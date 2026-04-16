@@ -6,15 +6,17 @@ module Auth
     ALGORITHM = "HS256"
 
     # Returns { access_token:, jti:, expires_at: }
-    def self.issue_access_token(account)
+    # Pass mfa_verified: true after a successful TOTP challenge.
+    def self.issue_access_token(account, mfa_verified: false)
       jti = SecureRandom.uuid
       exp = ACCESS_TOKEN_TTL.from_now.to_i
       payload = {
-        sub: account.id.to_s,
-        jti: jti,
-        exp: exp,
-        iat: Time.current.to_i,
-        account_type: account.account_type
+        sub:          account.id.to_s,
+        jti:          jti,
+        exp:          exp,
+        iat:          Time.current.to_i,
+        account_type: account.account_type,
+        mfa_verified: mfa_verified
       }
       token = JWT.encode(payload, signing_key(account), ALGORITHM)
       { access_token: token, jti: jti, expires_at: Time.at(exp) }

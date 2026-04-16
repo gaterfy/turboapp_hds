@@ -10,6 +10,11 @@ class PatientRecord < ApplicationRecord
   belongs_to :organization
   belongs_to :primary_practitioner, class_name: "Practitioner", optional: true
 
+  has_many :consultations,   dependent: :restrict_with_error
+  has_many :quotes,          dependent: :restrict_with_error
+  has_many :prescriptions,   dependent: :restrict_with_error
+  has_many :treatment_plans, dependent: :restrict_with_error
+
   validates :status, inclusion: { in: STATUSES }
   validates :patient_id, uniqueness: { scope: :organization_id,
                                        message: "already has a record in this organization" }
