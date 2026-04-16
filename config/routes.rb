@@ -32,8 +32,34 @@ Rails.application.routes.draw do
         member { patch :cancel }
       end
 
-      # Consultations – Sprint 3+
-      # resources :consultations
+      # Clinical documents
+      resources :consultations, only: %i[index show create update] do
+        member do
+          patch :complete
+          patch :lock
+        end
+      end
+
+      resources :quotes, only: %i[index show create update] do
+        member do
+          patch :send_to_patient
+          patch :sign
+          patch :reject
+          patch :expire
+        end
+        resources :line_items, only: %i[create update destroy],
+                               controller: "quote_line_items"
+      end
+
+      resources :prescriptions, only: %i[index show create update] do
+        member do
+          patch :sign
+          patch :deliver
+          patch :cancel
+        end
+        resources :line_items, only: %i[create update destroy],
+                               controller: "prescription_line_items"
+      end
     end
   end
 end

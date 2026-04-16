@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_16_130004) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_16_140005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -83,6 +83,34 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_16_130004) do
     t.index ["created_at"], name: "index_audit_logs_on_created_at"
     t.index ["organization_id"], name: "index_audit_logs_on_organization_id"
     t.index ["resource_type", "resource_id"], name: "index_audit_logs_on_resource_type_and_resource_id"
+  end
+
+  create_table "consultations", force: :cascade do |t|
+    t.bigint "patient_record_id", null: false
+    t.bigint "practitioner_id", null: false
+    t.bigint "appointment_id"
+    t.bigint "organization_id", null: false
+    t.string "status", default: "in_progress", null: false
+    t.datetime "consultation_date", null: false
+    t.integer "duration_minutes"
+    t.string "chief_complaint"
+    t.text "observations"
+    t.text "diagnosis"
+    t.text "teeth_concerned", default: [], array: true
+    t.jsonb "procedures_performed", default: [], null: false
+    t.jsonb "dental_chart_snapshot", default: {}, null: false
+    t.text "notes"
+    t.datetime "completed_at"
+    t.datetime "locked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["appointment_id"], name: "index_consultations_on_appointment_id"
+    t.index ["consultation_date"], name: "index_consultations_on_consultation_date"
+    t.index ["organization_id", "consultation_date"], name: "index_consultations_on_organization_id_and_consultation_date"
+    t.index ["organization_id"], name: "index_consultations_on_organization_id"
+    t.index ["patient_record_id"], name: "index_consultations_on_patient_record_id"
+    t.index ["practitioner_id"], name: "index_consultations_on_practitioner_id"
+    t.index ["status"], name: "index_consultations_on_status"
   end
 
   create_table "jwt_denylist", force: :cascade do |t|
@@ -199,6 +227,90 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_16_130004) do
     t.index ["status"], name: "index_practitioners_on_status"
   end
 
+  create_table "prescription_line_items", force: :cascade do |t|
+    t.bigint "prescription_id", null: false
+    t.string "medication", null: false
+    t.string "dosage", null: false
+    t.string "duration"
+    t.integer "quantity", default: 1, null: false
+    t.boolean "renewable", default: false, null: false
+    t.integer "position", default: 0, null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["prescription_id", "position"], name: "index_prescription_line_items_on_prescription_id_and_position"
+    t.index ["prescription_id"], name: "index_prescription_line_items_on_prescription_id"
+  end
+
+  create_table "prescriptions", force: :cascade do |t|
+    t.bigint "patient_record_id", null: false
+    t.bigint "practitioner_id", null: false
+    t.bigint "consultation_id"
+    t.bigint "organization_id", null: false
+    t.string "prescription_number", null: false
+    t.date "prescription_date", null: false
+    t.string "status", default: "draft", null: false
+    t.text "notes"
+    t.string "signature_submission_id"
+    t.datetime "signed_at"
+    t.datetime "delivered_at"
+    t.datetime "cancelled_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["consultation_id"], name: "index_prescriptions_on_consultation_id"
+    t.index ["organization_id"], name: "index_prescriptions_on_organization_id"
+    t.index ["patient_record_id"], name: "index_prescriptions_on_patient_record_id"
+    t.index ["practitioner_id"], name: "index_prescriptions_on_practitioner_id"
+    t.index ["prescription_date"], name: "index_prescriptions_on_prescription_date"
+    t.index ["prescription_number"], name: "index_prescriptions_on_prescription_number", unique: true
+    t.index ["status"], name: "index_prescriptions_on_status"
+  end
+
+  create_table "quote_line_items", force: :cascade do |t|
+    t.bigint "quote_id", null: false
+    t.string "procedure_code"
+    t.string "label", null: false
+    t.string "tooth_location"
+    t.integer "quantity", default: 1, null: false
+    t.integer "position", default: 0, null: false
+    t.decimal "unit_fee", precision: 10, scale: 2, null: false
+    t.decimal "reimbursement_base", precision: 10, scale: 2, default: "0.0"
+    t.decimal "reimbursement_rate", precision: 5, scale: 2, default: "0.0"
+    t.decimal "reimbursement_amount", precision: 10, scale: 2, default: "0.0"
+    t.decimal "patient_share", precision: 10, scale: 2, default: "0.0"
+    t.decimal "overage", precision: 10, scale: 2, default: "0.0"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["quote_id", "position"], name: "index_quote_line_items_on_quote_id_and_position"
+    t.index ["quote_id"], name: "index_quote_line_items_on_quote_id"
+  end
+
+  create_table "quotes", force: :cascade do |t|
+    t.bigint "patient_record_id", null: false
+    t.bigint "practitioner_id", null: false
+    t.bigint "organization_id", null: false
+    t.string "quote_number", null: false
+    t.string "status", default: "draft", null: false
+    t.date "valid_until"
+    t.decimal "total_fees", precision: 10, scale: 2, default: "0.0"
+    t.decimal "total_reimbursement_base", precision: 10, scale: 2, default: "0.0"
+    t.decimal "total_patient_share", precision: 10, scale: 2, default: "0.0"
+    t.text "notes"
+    t.string "signature_submission_id"
+    t.datetime "sent_at"
+    t.datetime "signed_at"
+    t.datetime "rejected_at"
+    t.datetime "expired_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_quotes_on_organization_id"
+    t.index ["patient_record_id"], name: "index_quotes_on_patient_record_id"
+    t.index ["practitioner_id"], name: "index_quotes_on_practitioner_id"
+    t.index ["quote_number"], name: "index_quotes_on_quote_number", unique: true
+    t.index ["signature_submission_id"], name: "index_quotes_on_signature_submission_id"
+    t.index ["status"], name: "index_quotes_on_status"
+  end
+
   create_table "refresh_tokens", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "token", null: false
@@ -218,6 +330,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_16_130004) do
   add_foreign_key "appointments", "organizations"
   add_foreign_key "appointments", "patients"
   add_foreign_key "appointments", "practitioners"
+  add_foreign_key "consultations", "appointments"
+  add_foreign_key "consultations", "organizations"
+  add_foreign_key "consultations", "patient_records"
+  add_foreign_key "consultations", "practitioners"
   add_foreign_key "memberships", "accounts"
   add_foreign_key "memberships", "organizations"
   add_foreign_key "patient_records", "organizations"
@@ -227,5 +343,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_16_130004) do
   add_foreign_key "patients", "organizations"
   add_foreign_key "practitioners", "accounts"
   add_foreign_key "practitioners", "organizations"
+  add_foreign_key "prescription_line_items", "prescriptions"
+  add_foreign_key "prescriptions", "consultations"
+  add_foreign_key "prescriptions", "organizations"
+  add_foreign_key "prescriptions", "patient_records"
+  add_foreign_key "prescriptions", "practitioners"
+  add_foreign_key "quote_line_items", "quotes"
+  add_foreign_key "quotes", "organizations"
+  add_foreign_key "quotes", "patient_records"
+  add_foreign_key "quotes", "practitioners"
   add_foreign_key "refresh_tokens", "accounts"
 end

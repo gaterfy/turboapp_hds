@@ -18,6 +18,7 @@ gem "stimulus-rails"
 gem "jbuilder"
 
 gem "kaminari"
+gem "aasm"
 
 # Authentication and security
 gem "bcrypt", "~> 3.1.7"
