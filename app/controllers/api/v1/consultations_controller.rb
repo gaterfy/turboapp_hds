@@ -3,7 +3,7 @@
 module Api
   module V1
     class ConsultationsController < Api::V1::BaseController
-      before_action :set_consultation, only: %i[show update complete lock]
+      before_action :set_consultation, only: %i[show update complete seal]
 
       def index
         consultations = policy_scope(Consultation)
@@ -54,9 +54,9 @@ module Api
         render_success @consultation.as_api_json
       end
 
-      def lock
-        authorize @consultation, :lock?
-        @consultation.lock!
+      def seal
+        authorize @consultation, :seal?
+        @consultation.seal!
 
         audit "status_changed", resource: @consultation, metadata: { new_status: "locked" }
         render_success @consultation.as_api_json

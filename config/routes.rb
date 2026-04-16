@@ -36,7 +36,7 @@ Rails.application.routes.draw do
       resources :consultations, only: %i[index show create update] do
         member do
           patch :complete
-          patch :lock
+          patch :seal
         end
       end
 

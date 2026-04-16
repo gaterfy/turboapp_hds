@@ -42,7 +42,8 @@ class Consultation < ApplicationRecord
       end
     end
 
-    event :lock do
+    # Named `seal` to avoid conflict with ActiveRecord's built-in `lock!` method.
+    event :seal do
       transitions from: :completed, to: :locked
       after { update!(locked_at: Time.current) }
     end

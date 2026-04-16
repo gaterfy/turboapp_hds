@@ -26,8 +26,8 @@ module Api
 
           account.unlock_access! if account.access_locked?
 
-          token_data = Auth::TokenIssuer.issue_access_token(account)
-          refresh_token = Auth::TokenIssuer.issue_refresh_token(account, request: request)
+          token_data = ::Auth::TokenIssuer.issue_access_token(account)
+          refresh_token = ::Auth::TokenIssuer.issue_refresh_token(account, request: request)
 
           Audit::LoggerService.log(
             action: "login_success",
@@ -74,9 +74,9 @@ module Api
           token = request.headers["Authorization"]&.remove("Bearer ")&.strip
           return render_error("unauthorized", "Missing Authorization header", status: :unauthorized) if token.blank?
 
-          @current_payload = Auth::TokenVerifier.verify!(token)
+          @current_payload = ::Auth::TokenVerifier.verify!(token)
           @auth_account = Account.find(@current_payload["sub"])
-        rescue Auth::TokenVerifier::Error => e
+        rescue ::Auth::TokenVerifier::Error => e
           render_error "unauthorized", e.message, status: :unauthorized
         end
 

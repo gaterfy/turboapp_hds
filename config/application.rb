@@ -25,7 +25,5 @@ module TurboappHds
 
     config.middleware.use Rack::Attack
 
-    # Autoload app/services and app/policies
-    config.autoload_paths += %W[#{config.root}/app/services #{config.root}/app/policies]
   end
 end

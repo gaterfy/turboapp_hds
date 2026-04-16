@@ -3,6 +3,9 @@
 module Api
   module V1
     class ProfilesController < Api::V1::BaseController
+      skip_after_action :verify_authorized
+      skip_after_action :verify_policy_scoped
+
       def show
         audit "read", resource: current_account
         render_success profile_payload

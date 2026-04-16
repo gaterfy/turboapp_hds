@@ -31,6 +31,9 @@ module Api
     end
 
     def render_internal_error(exception)
+      # Re-raise in test so the real error is visible and not swallowed by the generic handler
+      raise exception if Rails.env.test?
+
       Rails.logger.error("#{exception.class}: #{exception.message}\n#{exception.backtrace&.first(10)&.join("\n")}")
       render_error "internal_error", "An unexpected error occurred", status: :internal_server_error
     end

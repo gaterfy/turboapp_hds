@@ -8,7 +8,8 @@ module Api
       # The old refresh token is immediately revoked (rotation strategy).
       class RefreshTokensController < Api::BaseController
         def create
-          token_value = params[:refresh_token]&.strip
+          token_value = params[:refresh_token].presence
+          token_value = token_value.is_a?(String) ? token_value.strip.presence : nil
           return render_error("missing_token", "refresh_token is required", status: :bad_request) if token_value.blank?
 
           refresh_token = RefreshToken.find_by(token: token_value)
@@ -30,8 +31,8 @@ module Api
           # Rotation: revoke current refresh token before issuing a new pair
           refresh_token.revoke!(reason: "rotated")
 
-          new_token_data = Auth::TokenIssuer.issue_access_token(account)
-          new_refresh_token = Auth::TokenIssuer.issue_refresh_token(account, request: request)
+          new_token_data = ::Auth::TokenIssuer.issue_access_token(account)
+          new_refresh_token = ::Auth::TokenIssuer.issue_refresh_token(account, request: request)
 
           Audit::LoggerService.log(
             action: "token_refreshed",

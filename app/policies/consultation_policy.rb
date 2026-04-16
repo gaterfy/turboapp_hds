@@ -11,7 +11,7 @@ class ConsultationPolicy < ApplicationPolicy
   def destroy? = false  # Consultations are never hard-deleted
 
   def complete? = practitioner? && record.may_complete?
-  def lock?     = admin? && record.may_lock?
+  def seal?     = admin? && record.may_seal?
 
   class Scope < ApplicationPolicy::Scope
     def resolve
