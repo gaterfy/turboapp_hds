@@ -24,6 +24,12 @@ class Rack::Attack
     req.ip if req.path == "/api/v1/auth/refresh" && req.post?
   end
 
+  # Throttle SSO exchange by IP: 10 per minute
+  # Protects against bruteforce on assertion forgery attempts
+  throttle("api/auth/sso/exchange by IP", limit: 10, period: 1.minute) do |req|
+    req.ip if req.path == "/api/v1/auth/sso/exchange" && req.post?
+  end
+
   # Throttle all other API calls by IP: 300 per minute
   throttle("api general by IP", limit: 300, period: 1.minute) do |req|
     req.ip if req.path.start_with?("/api/")

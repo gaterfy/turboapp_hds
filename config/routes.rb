@@ -16,6 +16,9 @@ Rails.application.routes.draw do
         delete "logout",  to: "sessions#destroy"
         post   "refresh", to: "refresh_tokens#create"
 
+        # SSO cross-app: echange assertion turboapp contre tokens locaux
+        post "sso/exchange", to: "sso#exchange"
+
         # MFA (requires valid access token)
         scope :mfa do
           post   "setup",   to: "mfa#setup"
