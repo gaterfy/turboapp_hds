@@ -1,5 +1,9 @@
 source "https://rubygems.org"
 
+# Exact pin avoids auto-upgrade on Scalingo (which would pick the latest 3.3.x
+# and fail if the active stack doesn't support it yet).
+ruby "3.3.3"
+
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 8.0.4"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]

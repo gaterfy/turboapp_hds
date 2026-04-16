@@ -46,10 +46,10 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # HDS MVP: use memory cache and async queue until a second DB is provisioned.
-  # Switch to :solid_cache_store / :solid_queue once multi-DB is configured on Scalingo.
-  config.cache_store = :memory_store, { size: 64.megabytes }
-  config.active_job.queue_adapter = :async
+  # Solid adapters share the primary DB on Scalingo (single DATABASE_URL).
+  # database.yml aliases :queue, :cache, :cable to :primary so no extra addon is needed.
+  config.cache_store          = :solid_cache_store
+  config.active_job.queue_adapter = :solid_queue
 
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
