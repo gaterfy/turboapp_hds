@@ -1,0 +1,39 @@
+Rails.application.routes.draw do
+  # Infrastructure health – used by Scalingo load balancer
+  get "up" => "rails/health#show", as: :rails_health_check
+
+  # devise_for :accounts is intentionally removed.
+  # Auth is handled via custom API controllers below.
+
+  namespace :api do
+    namespace :v1 do
+      # Authentication (no JWT required)
+      namespace :auth do
+        post   "login",   to: "sessions#create"
+        delete "logout",  to: "sessions#destroy"
+        post   "refresh", to: "refresh_tokens#create"
+      end
+
+      # Authenticated + organization-scoped endpoints
+      resource :profile, only: :show
+
+      # Clinical resources
+      resources :practitioners, only: %i[index show create update] do
+        member { patch :deactivate }
+      end
+
+      resources :patients, only: %i[index show create update]
+
+      resources :patient_records, only: %i[index show create update] do
+        member { patch :archive }
+      end
+
+      resources :appointments, only: %i[index show create update] do
+        member { patch :cancel }
+      end
+
+      # Consultations – Sprint 3+
+      # resources :consultations
+    end
+  end
+end
