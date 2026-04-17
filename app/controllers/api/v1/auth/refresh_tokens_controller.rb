@@ -52,7 +52,9 @@ module Api
             access_token: new_token_data[:access_token],
             access_token_expires_at: new_token_data[:expires_at],
             refresh_token: new_refresh_token.token,
-            refresh_token_expires_at: new_refresh_token.expires_at
+            refresh_token_expires_at: new_refresh_token.expires_at,
+            mfa_verified: mfa_verified,
+            mfa_enabled: account.mfa_enabled?
           }, status: :created)
         end
 

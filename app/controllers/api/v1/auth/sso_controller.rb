@@ -56,10 +56,12 @@ module Api
             refresh_token:            refresh_token.token,
             refresh_token_expires_at: refresh_token.expires_at,
             mfa_verified:             mfa_verified,
+            mfa_enabled:              account.mfa_enabled?,
             account: {
               id:           account.id,
               email:        account.email,
-              account_type: account.account_type
+              account_type: account.account_type,
+              mfa_enabled:  account.mfa_enabled?
             }
           }, status: :created)
         end

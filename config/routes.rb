@@ -26,6 +26,10 @@ Rails.application.routes.draw do
           post   "verify",  to: "mfa#verify"
           delete "disable", to: "mfa#disable"
         end
+
+        # Lists organizations the authenticated account can access (used
+        # by clients to display the org picker before resolving an org).
+        get "memberships", to: "memberships#index"
       end
 
       # Authenticated + organization-scoped endpoints
