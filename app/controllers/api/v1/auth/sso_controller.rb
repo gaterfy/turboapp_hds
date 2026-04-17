@@ -25,8 +25,18 @@ module Api
           account = find_or_provision_account!(payload)
           return if performed?
 
-          token_data    = ::Auth::TokenIssuer.issue_access_token(account)
-          refresh_token = ::Auth::TokenIssuer.issue_refresh_token(account, request: request)
+          # Propagate MFA status from the SSO assertion. The upstream IdP
+          # (turboapp hub) is responsible for having performed strong
+          # authentication (WebAuthn/TOTP/CPS) before emitting the assertion.
+          # If the claim is missing or false, downstream HDS endpoints will
+          # require a subsequent /mfa/verify call (enforce_mfa! in BaseController).
+          mfa_verified  = payload["mfa"] == true
+          token_data    = ::Auth::TokenIssuer.issue_access_token(account, mfa_verified: mfa_verified)
+          refresh_token = ::Auth::TokenIssuer.issue_refresh_token(
+            account,
+            request: request,
+            mfa_verified: mfa_verified
+          )
 
           Audit::LoggerService.log(
             action: "sso_login",
@@ -34,7 +44,8 @@ module Api
             metadata: {
               source: "turboapp",
               merchant_id: payload["merchant_id"],
-              merchant_email: payload["sub"]
+              merchant_email: payload["sub"],
+              mfa_verified: mfa_verified
             },
             request: request
           )
@@ -44,6 +55,7 @@ module Api
             access_token_expires_at:  token_data[:expires_at],
             refresh_token:            refresh_token.token,
             refresh_token_expires_at: refresh_token.expires_at,
+            mfa_verified:             mfa_verified,
             account: {
               id:           account.id,
               email:        account.email,
@@ -100,10 +112,18 @@ module Api
 
         # ── Account provisioning ──────────────────────────────────────────────
 
+        EMAIL_REGEXP = URI::MailTo::EMAIL_REGEXP
+
         def find_or_provision_account!(payload)
           email         = payload["sub"]&.downcase&.strip
           expected_role = payload["role"]
-          account       = Account.find_by(email: email)
+
+          if email.blank? || !email.match?(EMAIL_REGEXP)
+            render_error("invalid_assertion", "Assertion sub is not a valid email", status: :unauthorized)
+            return nil
+          end
+
+          account = Account.find_by(email: email)
 
           if account
             unless account.active?
@@ -135,12 +155,18 @@ module Api
             return account
           end
 
+          # Account is SSO-only: the password is a random unusable value that
+          # satisfies complexity rules. The user will never authenticate with it.
           Account.create!(
             email:        email,
-            password:     SecureRandom.hex(32),
+            password:     generate_sso_password,
             account_type: expected_role,
             active:       true
           )
+        end
+
+        def generate_sso_password
+          "SSO!#{SecureRandom.hex(16).upcase}-#{SecureRandom.hex(16)}1"
         end
 
         def sso_secret

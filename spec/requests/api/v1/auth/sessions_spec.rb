@@ -4,7 +4,7 @@ require "rails_helper"
 
 RSpec.describe "POST /api/v1/auth/login & DELETE /api/v1/auth/logout", type: :request do
   let(:org)        { create(:organization) }
-  let(:account)    { create(:account, email: "doc@example.com", password: "Test1234!", password_confirmation: "Test1234!") }
+  let(:account)    { create(:account, email: "doc@example.com", password: "TestPass1234!", password_confirmation: "TestPass1234!") }
   let(:headers)    { { "Content-Type" => "application/json", "Accept" => "application/json" } }
 
   # -------------------------------------------------------------------
@@ -14,7 +14,7 @@ RSpec.describe "POST /api/v1/auth/login & DELETE /api/v1/auth/logout", type: :re
     context "with valid credentials" do
       it "returns a token pair and account info" do
         post "/api/v1/auth/login",
-             params: { email: account.email, password: "Test1234!" }.to_json,
+             params: { email: account.email, password: "TestPass1234!" }.to_json,
              headers: headers
 
         expect(response).to have_http_status(:created)
@@ -28,7 +28,7 @@ RSpec.describe "POST /api/v1/auth/login & DELETE /api/v1/auth/logout", type: :re
       it "creates an audit log entry" do
         expect {
           post "/api/v1/auth/login",
-               params: { email: account.email, password: "Test1234!" }.to_json,
+               params: { email: account.email, password: "TestPass1234!" }.to_json,
                headers: headers
         }.to change(AuditLog, :count).by(1)
 
@@ -58,7 +58,7 @@ RSpec.describe "POST /api/v1/auth/login & DELETE /api/v1/auth/logout", type: :re
     context "with unknown email" do
       it "returns 401" do
         post "/api/v1/auth/login",
-             params: { email: "nobody@example.com", password: "Test1234!" }.to_json,
+             params: { email: "nobody@example.com", password: "TestPass1234!" }.to_json,
              headers: headers
 
         expect(response).to have_http_status(:unauthorized)
@@ -70,7 +70,7 @@ RSpec.describe "POST /api/v1/auth/login & DELETE /api/v1/auth/logout", type: :re
 
       it "returns 403 account_inactive" do
         post "/api/v1/auth/login",
-             params: { email: account.email, password: "Test1234!" }.to_json,
+             params: { email: account.email, password: "TestPass1234!" }.to_json,
              headers: headers
 
         expect(response).to have_http_status(:forbidden)
@@ -83,7 +83,7 @@ RSpec.describe "POST /api/v1/auth/login & DELETE /api/v1/auth/logout", type: :re
 
       it "returns 403 account_locked" do
         post "/api/v1/auth/login",
-             params: { email: account.email, password: "Test1234!" }.to_json,
+             params: { email: account.email, password: "TestPass1234!" }.to_json,
              headers: headers
 
         expect(response).to have_http_status(:forbidden)
@@ -148,7 +148,7 @@ RSpec.describe "POST /api/v1/auth/login & DELETE /api/v1/auth/logout", type: :re
     end
 
     it "returns 400 without X-Organization-Id header" do
-      token = ::Auth::TokenIssuer.issue_access_token(account)[:access_token]
+      token = ::Auth::TokenIssuer.issue_access_token(account, mfa_verified: true)[:access_token]
 
       get "/api/v1/profile",
           headers: headers.merge("Authorization" => "Bearer #{token}")
@@ -158,7 +158,7 @@ RSpec.describe "POST /api/v1/auth/login & DELETE /api/v1/auth/logout", type: :re
 
     it "returns 403 when account has no membership in the given org" do
       other_org = create(:organization)
-      token = ::Auth::TokenIssuer.issue_access_token(account)[:access_token]
+      token = ::Auth::TokenIssuer.issue_access_token(account, mfa_verified: true)[:access_token]
 
       get "/api/v1/profile",
           headers: headers.merge(
@@ -167,6 +167,21 @@ RSpec.describe "POST /api/v1/auth/login & DELETE /api/v1/auth/logout", type: :re
           )
 
       expect(response).to have_http_status(:forbidden)
+    end
+
+    it "returns 403 mfa_required when practitioner token has no mfa_verified claim" do
+      org = create(:organization)
+      create(:membership, account: account, organization: org)
+      token = ::Auth::TokenIssuer.issue_access_token(account, mfa_verified: false)[:access_token]
+
+      get "/api/v1/profile",
+          headers: headers.merge(
+            "Authorization" => "Bearer #{token}",
+            "X-Organization-Id" => org.id.to_s
+          )
+
+      expect(response).to have_http_status(:forbidden)
+      expect(json_body.dig("error", "code")).to eq("mfa_required")
     end
   end
 end

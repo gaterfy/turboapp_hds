@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_16_170001) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_17_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -332,6 +332,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_16_170001) do
     t.string "issued_user_agent"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "mfa_verified", default: false, null: false
     t.index ["account_id"], name: "index_refresh_tokens_on_account_id"
     t.index ["expires_at"], name: "index_refresh_tokens_on_expires_at"
     t.index ["revoked_at"], name: "index_refresh_tokens_on_revoked_at"

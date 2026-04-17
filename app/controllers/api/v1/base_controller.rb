@@ -14,6 +14,7 @@ module Api
       include Pundit::Authorization
 
       before_action :authenticate_account!
+      before_action :enforce_mfa!
       before_action :resolve_organization!
 
       after_action :verify_authorized,    except: :index
@@ -34,8 +35,8 @@ module Api
           return render_error("unauthorized", "Missing Authorization header", status: :unauthorized)
         end
 
-        payload = ::Auth::TokenVerifier.verify!(token)
-        @current_account = Account.active.find(payload["sub"])
+        @current_payload = ::Auth::TokenVerifier.verify!(token)
+        @current_account = Account.active.find(@current_payload["sub"])
       rescue ::Auth::TokenVerifier::ExpiredToken
         skip_authorization_and_scope
         render_error "token_expired", "Access token has expired", status: :unauthorized
@@ -50,8 +51,28 @@ module Api
         render_error "unauthorized", "Account not found", status: :unauthorized
       end
 
+      # Strong authentication requirement for practitioners accessing PHI.
+      # Patients are out of scope for this check (their portal scopes data to
+      # their own record only). For practitioners, the access token MUST
+      # carry `mfa_verified: true`, obtained either via:
+      #   - POST /api/v1/auth/mfa/verify  (TOTP challenge after login)
+      #   - POST /api/v1/auth/sso/exchange with `mfa: true` claim in assertion
+      def enforce_mfa!
+        return if performed?
+        return unless current_account
+        return if current_account.patient?
+        return if @current_payload && @current_payload["mfa_verified"] == true
+
+        skip_authorization_and_scope
+        render_error(
+          "mfa_required",
+          "Strong authentication (MFA) is required for this account",
+          status: :forbidden
+        )
+      end
+
       def resolve_organization!
-        return if performed?  # already rendered in authenticate_account!
+        return if performed?  # already rendered in authenticate_account! or enforce_mfa!
 
         organization_id = request.headers["X-Organization-Id"]
         if organization_id.blank?

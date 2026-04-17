@@ -76,12 +76,13 @@ Rails.application.configure do
   # Only use :id for inspections in production.
   config.active_record.attributes_for_inspect = [ :id ]
 
-  # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  # DNS rebinding / Host header attack protection.
+  # ALLOWED_HOSTS is a comma-separated list of hostnames this app accepts.
+  # APP_HOST (already required at boot) is always included as a fallback.
+  allowed_hosts = ENV.fetch("ALLOWED_HOSTS", ENV["APP_HOST"].to_s)
+                     .split(",").map(&:strip).reject(&:blank?)
+  config.hosts = allowed_hosts if allowed_hosts.any?
+
+  # Health check must always be reachable (load balancer probes).
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 end

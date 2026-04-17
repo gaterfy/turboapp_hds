@@ -34,8 +34,21 @@ module Api
       # Re-raise in test so the real error is visible and not swallowed by the generic handler
       raise exception if Rails.env.test?
 
-      Rails.logger.error("#{exception.class}: #{exception.message}\n#{exception.backtrace&.first(10)&.join("\n")}")
-      render_error "internal_error", "An unexpected error occurred", status: :internal_server_error
+      # Structured log — exception class only, no message.
+      # Messages frequently contain PII (e.g. ActiveRecord "Validation failed:
+      # Email foo@bar.fr already taken"). We keep a correlation id so ops can
+      # locate the full trace in the APM/Sentry backend when needed.
+      error_id = SecureRandom.uuid
+      Rails.logger.error(
+        "[internal_error] id=#{error_id} class=#{exception.class} " \
+        "request_id=#{request.request_id} path=#{request.path}"
+      )
+      Rails.logger.debug { exception.backtrace&.first(10)&.join("\n") }
+
+      render_error "internal_error",
+                   "An unexpected error occurred",
+                   status: :internal_server_error,
+                   details: { error_id: error_id }
     end
   end
 end

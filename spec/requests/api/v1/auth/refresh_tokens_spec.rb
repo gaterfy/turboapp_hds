@@ -33,8 +33,13 @@ RSpec.describe "POST /api/v1/auth/refresh", type: :request do
     end
 
     it "the new access token grants access to protected endpoints" do
-      org   = create(:organization)
+      org = create(:organization)
       create(:membership, account: account, organization: org)
+
+      # Simulate a practitioner who has already passed MFA when the original
+      # pair was emitted: the refresh token carries mfa_verified: true and must
+      # propagate it to the newly-rotated access token.
+      refresh_token.update!(mfa_verified: true)
 
       post_refresh(refresh_token.token)
 
@@ -47,6 +52,24 @@ RSpec.describe "POST /api/v1/auth/refresh", type: :request do
           }
 
       expect(response).to have_http_status(:ok)
+    end
+
+    it "preserves mfa_verified across rotations" do
+      refresh_token.update!(mfa_verified: true)
+
+      post_refresh(refresh_token.token)
+      new_access = json_body.dig("data", "access_token")
+
+      payload = ::Auth::TokenVerifier.verify!(new_access)
+      expect(payload["mfa_verified"]).to eq(true)
+    end
+
+    it "does not upgrade mfa_verified on rotation if the original was false" do
+      post_refresh(refresh_token.token)
+      new_access = json_body.dig("data", "access_token")
+
+      payload = ::Auth::TokenVerifier.verify!(new_access)
+      expect(payload["mfa_verified"]).to eq(false)
     end
   end
 

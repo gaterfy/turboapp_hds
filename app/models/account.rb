@@ -14,8 +14,20 @@ class Account < ApplicationRecord
 
   validates :account_type, presence: true
   validates :active, inclusion: { in: [ true, false ] }
+  validate  :password_complexity
 
   before_create :set_jti_secret
+
+  # HDS / ANSSI: 12+ chars with at least three of four character classes
+  # (upper, lower, digit, special). Only validated when a new password is
+  # being set (creation or explicit change), not on trivial saves.
+  PASSWORD_COMPLEXITY = /\A(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{12,}\z/
+  def password_complexity
+    return unless password.present?
+    return if password.match?(PASSWORD_COMPLEXITY)
+
+    errors.add(:password, "must be at least 12 characters and include uppercase, lowercase and a digit")
+  end
 
   # ─── MFA ──────────────────────────────────────────────────────────────────
   def setup_mfa!

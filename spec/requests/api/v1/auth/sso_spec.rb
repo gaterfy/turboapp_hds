@@ -319,4 +319,66 @@ RSpec.describe "POST /api/v1/auth/sso/exchange", type: :request do
       expect(payload["account_type"]).to eq("practitioner")
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Email validation
+  # ---------------------------------------------------------------------------
+  describe "email validation" do
+    it "rejects an assertion with a blank sub" do
+      assertion = encode(valid_payload(sub: ""))
+
+      post_exchange(assertion)
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(json_body.dig("error", "code")).to eq("invalid_assertion")
+    end
+
+    it "rejects an assertion with an invalid email format" do
+      assertion = encode(valid_payload(sub: "not-an-email"))
+
+      post_exchange(assertion)
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(json_body.dig("error", "code")).to eq("invalid_assertion")
+    end
+
+    it "does not create an account on invalid email" do
+      assertion = encode(valid_payload(sub: "bad email"))
+
+      expect { post_exchange(assertion) }.not_to change(Account, :count)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # MFA propagation
+  # ---------------------------------------------------------------------------
+  describe "MFA claim propagation" do
+    it "issues a token with mfa_verified: false by default" do
+      assertion = encode(valid_payload)
+
+      post_exchange(assertion)
+
+      expect(json_body.dig("data", "mfa_verified")).to eq(false)
+      payload = ::Auth::TokenVerifier.verify!(json_body.dig("data", "access_token"))
+      expect(payload["mfa_verified"]).to eq(false)
+    end
+
+    it "propagates mfa: true from the assertion into the access token" do
+      assertion = encode(valid_payload(mfa: true))
+
+      post_exchange(assertion)
+
+      expect(json_body.dig("data", "mfa_verified")).to eq(true)
+      payload = ::Auth::TokenVerifier.verify!(json_body.dig("data", "access_token"))
+      expect(payload["mfa_verified"]).to eq(true)
+    end
+
+    it "treats mfa: 'true' (string) as unverified (strict comparison)" do
+      assertion = encode(valid_payload(mfa: "true"))
+
+      post_exchange(assertion)
+
+      expect(json_body.dig("data", "mfa_verified")).to eq(false)
+    end
+  end
 end

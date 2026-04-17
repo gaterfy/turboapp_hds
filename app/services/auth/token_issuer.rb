@@ -22,11 +22,15 @@ module Auth
       { access_token: token, jti: jti, expires_at: Time.at(exp) }
     end
 
-    # Returns a new RefreshToken record
-    def self.issue_refresh_token(account, request: nil)
+    # Returns a new RefreshToken record.
+    # `mfa_verified` is persisted on the refresh token so that subsequent
+    # refreshes can re-issue access tokens with the same authentication level,
+    # without forcing the user to re-perform MFA every time the access token rotates.
+    def self.issue_refresh_token(account, request: nil, mfa_verified: false)
       account.refresh_tokens.create!(
-        issued_ip: request&.remote_ip,
-        issued_user_agent: request&.user_agent
+        issued_ip:         request&.remote_ip,
+        issued_user_agent: request&.user_agent,
+        mfa_verified:      mfa_verified
       )
     end
 

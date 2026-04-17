@@ -28,11 +28,18 @@ module Api
             return render_error "account_inactive", "Account is deactivated", status: :forbidden
           end
 
-          # Rotation: revoke current refresh token before issuing a new pair
+          # Rotation: revoke current refresh token before issuing a new pair.
+          # The MFA level is carried over so that strong authentication does not
+          # have to be re-performed on every access token rotation.
+          mfa_verified = refresh_token.mfa_verified
           refresh_token.revoke!(reason: "rotated")
 
-          new_token_data = ::Auth::TokenIssuer.issue_access_token(account)
-          new_refresh_token = ::Auth::TokenIssuer.issue_refresh_token(account, request: request)
+          new_token_data = ::Auth::TokenIssuer.issue_access_token(account, mfa_verified: mfa_verified)
+          new_refresh_token = ::Auth::TokenIssuer.issue_refresh_token(
+            account,
+            request: request,
+            mfa_verified: mfa_verified
+          )
 
           Audit::LoggerService.log(
             action: "token_refreshed",

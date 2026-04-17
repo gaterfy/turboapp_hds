@@ -1,8 +1,8 @@
 FactoryBot.define do
   factory :account do
     sequence(:email) { |n| "account#{n}@example.com" }
-    password              { "Test1234!" }
-    password_confirmation { "Test1234!" }
+    password              { "TestPass1234!" }
+    password_confirmation { "TestPass1234!" }
     account_type { :practitioner }
     active { true }
 
