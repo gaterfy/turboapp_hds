@@ -29,7 +29,7 @@ module Api
         end
 
         def confirm
-          backup_codes = @mfa_account.enable_mfa!(params[:otp_code])
+          backup_codes = @mfa_account.enable_mfa!(mfa_otp_param)
 
           if backup_codes
             Audit::LoggerService.log(action: "mfa_enabled", account: @mfa_account, request: request)
@@ -42,7 +42,7 @@ module Api
         def verify
           return render_error "mfa_not_enabled", "MFA is not enabled for this account", status: :unprocessable_entity unless @mfa_account.mfa_enabled?
 
-          if @mfa_account.verify_mfa!(params[:otp_code])
+          if @mfa_account.verify_mfa!(mfa_otp_param)
             token_data = ::Auth::TokenIssuer.issue_access_token(@mfa_account, mfa_verified: true)
             Audit::LoggerService.log(action: "mfa_verified", account: @mfa_account, request: request)
 
@@ -60,7 +60,7 @@ module Api
         def disable
           return render_error "mfa_not_enabled", "MFA is not enabled", status: :unprocessable_entity unless @mfa_account.mfa_enabled?
 
-          unless @mfa_account.verify_mfa!(params[:otp_code])
+          unless @mfa_account.verify_mfa!(mfa_otp_param)
             return render_error "mfa_invalid_code", "Invalid OTP code — provide current code to disable MFA", status: :unauthorized
           end
 
@@ -70,6 +70,11 @@ module Api
         end
 
         private
+
+        # Accepte `otp_code` (contrat officiel) ou `code` (alias historique / clients legers).
+        def mfa_otp_param
+          params[:otp_code].presence || params[:code].presence
+        end
 
         def authenticate_for_mfa!
           token = request.headers["Authorization"]&.delete_prefix("Bearer ")&.strip

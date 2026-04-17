@@ -72,6 +72,17 @@ RSpec.describe "MFA endpoints", type: :request do
       expect(json_body.dig("data", "access_token")).to be_present
     end
 
+    it "accepts the legacy `code` JSON key as alias for otp_code" do
+      valid_otp = ROTP::TOTP.new(account.mfa_secret).now
+
+      post "/api/v1/auth/mfa/verify",
+           params: { code: valid_otp }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(json_body.dig("data", "access_token")).to be_present
+    end
+
     it "rejects with invalid OTP" do
       post "/api/v1/auth/mfa/verify",
            params: { otp_code: "000000" }.to_json,

@@ -15,6 +15,16 @@ else
   [ "http://localhost:3000", "http://localhost:5173" ]
 end
 
+# En dev uniquement, on autorise tous les ports localhost/127.0.0.1.
+# `flutter run -d chrome` attribue un port aleatoire (ex: 51730) qu'on ne
+# peut pas faire figurer dans une liste statique.
+if Rails.env.development?
+  allowed_origins = allowed_origins + [
+    %r{\Ahttp://localhost(?::\d+)?\z},
+    %r{\Ahttp://127\.0\.0\.1(?::\d+)?\z}
+  ]
+end
+
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
     origins(*allowed_origins)

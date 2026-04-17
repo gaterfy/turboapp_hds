@@ -55,6 +55,9 @@ gem "thruster", require: false
 # gem "image_processing", "~> 1.2"
 
 group :development, :test do
+  # Charge `.env` au boot (SSO_ASSERTION_SECRET, ALLOWED_ORIGINS, etc.) sans
+  # `source .env && rails s` — evite les 500 sur /auth/sso/exchange en local.
+  gem "dotenv-rails", "~> 3.1"
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
   gem "brakeman", require: false
   gem "rubocop-rails-omakase", require: false

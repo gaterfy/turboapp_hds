@@ -71,7 +71,20 @@ module Api
         # ── Assertion verification ────────────────────────────────────────────
 
         def decode_and_verify!(token)
-          payload = JWT.decode(token, sso_secret, true, algorithms: [ALGORITHM]).first
+          signing_key = sso_secret
+          if signing_key.blank?
+            Rails.logger.error(
+              "[sso] SSO_ASSERTION_SECRET is blank — set it in .env (see .env.example) " \
+              "or export it before `rails s`. Same value as turboapp SSO_ASSERTION_SECRET."
+            )
+            render_error(
+              "sso_not_configured",
+              "SSO assertion verification is not configured on this server",
+              status: :service_unavailable
+            ) and return
+          end
+
+          payload = JWT.decode(token, signing_key, true, algorithms: [ALGORITHM]).first
 
           unless payload["iss"] == "turboapp" && payload["aud"] == "turboapp_hds"
             raise JWT::DecodeError, "Invalid issuer or audience"
@@ -172,9 +185,7 @@ module Api
         end
 
         def sso_secret
-          secret = ENV["SSO_ASSERTION_SECRET"]
-          raise "SSO_ASSERTION_SECRET is not configured" if secret.blank?
-          secret
+          ENV["SSO_ASSERTION_SECRET"].to_s.strip.presence
         end
       end
     end
