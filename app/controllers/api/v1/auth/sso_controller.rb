@@ -25,6 +25,8 @@ module Api
           account = find_or_provision_account!(payload)
           return if performed?
 
+          TurboappSso::CabinetProvisioner.call(account: account, payload: payload)
+
           # Propagate MFA status from the SSO assertion. The upstream IdP
           # (turboapp hub) is responsible for having performed strong
           # authentication (WebAuthn/TOTP/CPS) before emitting the assertion.
@@ -95,6 +97,13 @@ module Api
           role = payload["role"]
           if role.blank? || !ALLOWED_SSO_ROLES.include?(role)
             raise JWT::DecodeError, "Role '#{role}' is not allowed for SSO"
+          end
+
+          # turboapp peut signer `cabinet_access: false` pour un collaborateur sans droit cabinet.
+          # Absence du claim = rétrocompatibilité (comportement inchangé).
+          if payload.key?("cabinet_access") &&
+              ActiveModel::Type::Boolean.new.cast(payload["cabinet_access"]) != true
+            raise JWT::DecodeError, "Cabinet access denied on assertion"
           end
 
           jti = payload["jti"]

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_17_100001) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_17_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -153,8 +153,10 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_17_100001) do
     t.jsonb "settings", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "turboapp_merchant_id"
     t.index ["active"], name: "index_organizations_on_active"
     t.index ["slug"], name: "index_organizations_on_slug", unique: true
+    t.index ["turboapp_merchant_id"], name: "index_organizations_on_turboapp_merchant_id", unique: true, where: "(turboapp_merchant_id IS NOT NULL)"
   end
 
   create_table "patient_records", force: :cascade do |t|

@@ -18,6 +18,7 @@ class Organization < ApplicationRecord
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true,
                    format: { with: /\A[a-z0-9-]+\z/, message: "only lowercase letters, digits and hyphens" }
+  validates :turboapp_merchant_id, uniqueness: true, allow_nil: true
 
   scope :active, -> { where(active: true) }
 

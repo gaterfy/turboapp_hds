@@ -16,15 +16,16 @@ RSpec.describe "POST /api/v1/auth/sso/exchange", type: :request do
 
   def valid_payload(overrides = {})
     {
-      iss:         "turboapp",
-      aud:         "turboapp_hds",
-      sub:         email,
-      merchant_id: SecureRandom.uuid,
-      name:        "Dr. Martin",
-      role:        "practitioner",
-      exp:         60.seconds.from_now.to_i,
-      iat:         Time.current.to_i,
-      jti:         SecureRandom.uuid
+      iss:                "turboapp",
+      aud:                "turboapp_hds",
+      sub:                email,
+      merchant_id:        SecureRandom.uuid,
+      organization_name:  "Cabinet Martin",
+      name:               "Dr. Martin",
+      role:               "practitioner",
+      exp:                60.seconds.from_now.to_i,
+      iat:                Time.current.to_i,
+      jti:                SecureRandom.uuid
     }.merge(overrides)
   end
 
@@ -44,9 +45,13 @@ RSpec.describe "POST /api/v1/auth/sso/exchange", type: :request do
   describe "with a valid assertion" do
     context "when the account does not exist" do
       it "provisions a new practitioner Account and returns tokens" do
-        assertion = encode(valid_payload)
+        payload   = valid_payload
+        assertion = encode(payload)
 
         expect { post_exchange(assertion) }.to change(Account, :count).by(1)
+          .and change(Organization, :count).by(1)
+          .and change(Membership, :count).by(1)
+          .and change(Practitioner, :count).by(1)
 
         expect(response).to have_http_status(:created)
         body = json_body["data"]
@@ -59,6 +64,10 @@ RSpec.describe "POST /api/v1/auth/sso/exchange", type: :request do
         created = Account.find(body.dig("account", "id"))
         expect(created.account_type).to eq("practitioner")
         expect(created.active).to be(true)
+
+        org = Organization.find_by!(turboapp_merchant_id: payload[:merchant_id])
+        expect(org.name).to eq("Cabinet Martin")
+        expect(created.memberships.active.find_by(organization: org)).to be_present
       end
 
       it "consumes the jti (stored in denylist)" do
@@ -89,6 +98,35 @@ RSpec.describe "POST /api/v1/auth/sso/exchange", type: :request do
 
         expect(response).to have_http_status(:created)
         expect(json_body.dig("data", "account", "id")).to eq(existing.id)
+      end
+
+      it "provisionne le cabinet HDS si le compte existait sans membership" do
+        payload     = valid_payload
+        assertion   = encode(payload)
+        accounts_before = Account.count
+
+        expect { post_exchange(assertion) }.to change(Organization, :count).by(1)
+          .and change(Membership, :count).by(1)
+          .and change(Practitioner, :count).by(1)
+
+        expect(Account.count).to eq(accounts_before)
+
+        org = Organization.find_by!(turboapp_merchant_id: payload[:merchant_id])
+        expect(org.name).to eq("Cabinet Martin")
+        expect(existing.reload.memberships.active.pluck(:organization_id)).to include(org.id)
+      end
+    end
+
+    context "when merchant_id is absent from the assertion" do
+      it "does not create an organization (retrocompat)" do
+        payload     = valid_payload.except(:merchant_id)
+        assertion   = encode(payload)
+        org_before  = Organization.count
+
+        expect { post_exchange(assertion) }.to change(Account, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+        expect(Organization.count).to eq(org_before)
       end
     end
   end
@@ -154,6 +192,24 @@ RSpec.describe "POST /api/v1/auth/sso/exchange", type: :request do
       post_exchange(assertion)
 
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "with cabinet_access claim" do
+    it "rejects when cabinet_access is false" do
+      assertion = encode(valid_payload(cabinet_access: false))
+
+      post_exchange(assertion)
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(json_body.dig("error", "code")).to eq("invalid_assertion")
+    end
+
+    it "accepts when cabinet_access is true" do
+      assertion = encode(valid_payload(cabinet_access: true))
+
+      expect { post_exchange(assertion) }.to change(Account, :count).by(1)
+      expect(response).to have_http_status(:created)
     end
   end
 
