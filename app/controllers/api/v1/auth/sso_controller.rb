@@ -11,6 +11,9 @@ module Api
       class SsoController < Api::BaseController
         ALGORITHM = "HS256"
 
+        # Message unique cote client (P1 securite — pas de fuite de details JWT).
+        PUBLIC_ASSERTION_MESSAGE = "Invalid or expired SSO assertion."
+
         # Seuls ces roles peuvent etre provisionnes via SSO depuis turboapp.
         # Le role est porte par l'assertion (claim "role") et verifie strictement.
         ALLOWED_SSO_ROLES = %w[practitioner].freeze
@@ -117,14 +120,19 @@ module Api
 
           payload
         rescue JWT::ExpiredSignature
-          render_error("assertion_expired", "SSO assertion has expired", status: :unauthorized) and return
+          Audit::LoggerService.log(
+            action: "sso_assertion_rejected",
+            metadata: { reason: "expired_signature", merchant_email: safe_sub(token) },
+            request: request
+          )
+          render_error("assertion_expired", PUBLIC_ASSERTION_MESSAGE, status: :unauthorized) and return
         rescue JWT::DecodeError => e
           Audit::LoggerService.log(
             action: "sso_assertion_rejected",
             metadata: { reason: e.message, merchant_email: safe_sub(token) },
             request: request
           )
-          render_error("invalid_assertion", e.message, status: :unauthorized) and return
+          render_error("invalid_assertion", PUBLIC_ASSERTION_MESSAGE, status: :unauthorized) and return
         end
 
         # Decode le sub sans verification (pour log uniquement, apres echec).
@@ -143,7 +151,12 @@ module Api
           expected_role = payload["role"]
 
           if email.blank? || !email.match?(EMAIL_REGEXP)
-            render_error("invalid_assertion", "Assertion sub is not a valid email", status: :unauthorized)
+            Audit::LoggerService.log(
+              action: "sso_assertion_rejected",
+              metadata: { reason: "invalid_sub_email" },
+              request: request
+            )
+            render_error("invalid_assertion", PUBLIC_ASSERTION_MESSAGE, status: :unauthorized)
             return nil
           end
 

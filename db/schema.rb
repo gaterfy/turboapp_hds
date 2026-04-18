@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_04_17_140000) do
+ActiveRecord::Schema[8.0].define(version: 2026_04_17_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -326,7 +326,6 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_17_140000) do
 
   create_table "refresh_tokens", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.string "token", null: false
     t.datetime "expires_at", null: false
     t.datetime "revoked_at"
     t.string "revoked_reason"
@@ -335,10 +334,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_04_17_140000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "mfa_verified", default: false, null: false
+    t.string "token_digest", null: false
     t.index ["account_id"], name: "index_refresh_tokens_on_account_id"
     t.index ["expires_at"], name: "index_refresh_tokens_on_expires_at"
     t.index ["revoked_at"], name: "index_refresh_tokens_on_revoked_at"
-    t.index ["token"], name: "index_refresh_tokens_on_token", unique: true
+    t.index ["token_digest"], name: "index_refresh_tokens_on_token_digest", unique: true
   end
 
   create_table "solid_cable_messages", force: :cascade do |t|

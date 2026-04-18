@@ -12,7 +12,7 @@ module Api
           token_value = token_value.is_a?(String) ? token_value.strip.presence : nil
           return render_error("missing_token", "refresh_token is required", status: :bad_request) if token_value.blank?
 
-          refresh_token = RefreshToken.find_by(token: token_value)
+          refresh_token = RefreshToken.find_by_raw_token(token_value)
 
           unless refresh_token&.usable?
             Audit::LoggerService.log(

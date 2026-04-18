@@ -71,6 +71,14 @@ RSpec.describe "POST /api/v1/auth/refresh", type: :request do
       payload = ::Auth::TokenVerifier.verify!(new_access)
       expect(payload["mfa_verified"]).to eq(false)
     end
+
+    it "persiste uniquement le digest HMAC du refresh token (P0 securite)" do
+      rt = refresh_token
+      raw = rt.token
+      row = RefreshToken.find(rt.id)
+      expect(row.token_digest).to eq(RefreshToken.digest_for(raw))
+      expect(row.attributes).not_to have_key("token")
+    end
   end
 
   context "with a missing refresh_token param" do

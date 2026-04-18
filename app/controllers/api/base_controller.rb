@@ -20,8 +20,8 @@ module Api
       render json: body, status: status
     end
 
-    def render_not_found(exception = nil)
-      render_error "not_found", exception&.message || "Resource not found", status: :not_found
+    def render_not_found(_exception = nil)
+      render_error "not_found", "Resource not found", status: :not_found
     end
 
     def render_unprocessable_entity(exception)
