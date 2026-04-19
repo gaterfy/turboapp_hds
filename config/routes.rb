@@ -91,6 +91,15 @@ Rails.application.routes.draw do
         resources :line_items, only: %i[create update destroy],
                                controller: "prescription_line_items"
       end
+
+      # Tableau de bord analytics (même contrat JSON que turboapp Logosw)
+      get "analytics/dashboard", to: "analytics#dashboard"
+
+      # IA consultation (OpenAI) — même contrat que turboapp Logosw
+      post "consultation_ai/generate_report", to: "consultation_ai#generate_report"
+      post "consultation_ai/generate_colleague_letter", to: "consultation_ai#generate_colleague_letter"
+      post "consultation_ai/patient_report_pdf", to: "consultation_ai#patient_report_pdf"
+
       # Patient portal (patient accounts only)
       namespace :patient_portal do
         resource :record, only: :show, controller: "records" do

@@ -11,7 +11,12 @@ class SsoAssertionDenylist < ApplicationRecord
   scope :expired, -> { where("exp < ?", Time.current) }
 
   def self.consume!(jti:, exp:)
-    create!(jti: jti, exp: Time.at(exp))
+    exp_time = Time.zone.at(exp.to_i)
+    # Course ou double appel : la contrainte unique sur jti (ou la validation) peut
+    # faire echouer le second INSERT — on recharge la ligne existante.
+    create!(jti: jti, exp: exp_time)
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+    find_by!(jti: jti)
   end
 
   def self.consumed?(jti)

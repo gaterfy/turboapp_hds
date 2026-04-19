@@ -33,6 +33,9 @@ gem "devise", "~> 4.9"
 gem "rack-attack"
 gem "rack-cors"
 gem "pundit"
+gem "prawn"
+# Prawn requires matrix; Ruby 3.1+ no longer bundles it as a default gem.
+gem "matrix"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]

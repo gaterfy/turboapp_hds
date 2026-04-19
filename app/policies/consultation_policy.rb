@@ -13,6 +13,13 @@ class ConsultationPolicy < ApplicationPolicy
   def complete? = practitioner? && record.may_complete?
   def seal?     = admin? && record.may_seal?
 
+  # Outils IA (pas un enregistrement Consultation : record = classe Consultation).
+  # Les comptes rattaches en SSO sont souvent `admin` cabinet ; ils doivent
+  # pouvoir utiliser les memes outils qu'un membership `practitioner`.
+  def generate_ai_report? = admin? || practitioner?
+  def generate_ai_colleague_letter? = admin? || practitioner?
+  def export_ai_patient_report_pdf? = admin? || practitioner?
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       scope.where(organization: membership.organization)

@@ -17,8 +17,10 @@ module Api
       before_action :enforce_mfa!
       before_action :resolve_organization!
 
-      after_action :verify_authorized,    except: :index
-      after_action :verify_policy_scoped, only:   :index
+      # Ne pas utiliser `only/except: :index` : Rails 7.1+ exige que l'action citee
+      # existe sur chaque sous-controleur (raise_on_missing_callback_actions).
+      after_action :verify_authorized, if: -> { action_name != "index" }
+      after_action :verify_policy_scoped, if: -> { action_name == "index" }
 
       rescue_from Pundit::NotAuthorizedError,              with: :render_forbidden
       rescue_from Pundit::AuthorizationNotPerformedError,  with: :render_forbidden

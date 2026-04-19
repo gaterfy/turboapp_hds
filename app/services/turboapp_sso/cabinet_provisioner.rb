@@ -31,21 +31,24 @@ module TurboappSso
     private
 
     def provision_organization!(merchant_id)
-      Organization.find_by(turboapp_merchant_id: merchant_id) ||
-        create_organization!(merchant_id)
+      name = organization_display_name
+      slug = organization_slug(merchant_id)
+      org = begin
+        Organization.create!(
+          name: name,
+          slug: slug,
+          turboapp_merchant_id: merchant_id,
+          active: true
+        )
+      rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+        Organization.find_by!(turboapp_merchant_id: merchant_id)
+      end
+      org.update!(name: name, active: true) if org.name != name || org.active != true
+      org
     end
 
-    def create_organization!(merchant_id)
-      name = organization_display_name
-      slug = "merchant-#{merchant_id.delete('-').downcase}"
-      Organization.create!(
-        name: name,
-        slug: slug,
-        turboapp_merchant_id: merchant_id,
-        active: true
-      )
-    rescue ActiveRecord::RecordNotUnique
-      Organization.find_by!(turboapp_merchant_id: merchant_id)
+    def organization_slug(merchant_id)
+      "merchant-#{merchant_id.delete('-').downcase}"
     end
 
     def organization_display_name
@@ -55,26 +58,45 @@ module TurboappSso
     end
 
     def ensure_membership!(org)
-      m = Membership.find_or_initialize_by(account: @account, organization: org)
-      m.role = :admin
-      m.active = true
-      m.save!
+      m = begin
+        row = Membership.find_or_initialize_by(account: @account, organization: org)
+        row.role = :admin
+        row.active = true
+        row.save!
+        row
+      rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+        Membership.find_by!(account: @account, organization: org)
+      end
+      m.update!(role: :admin, active: true) unless m.admin? && m.active == true
     end
 
     def ensure_practitioner!(org, merchant_id)
-      return if Practitioner.exists?(account: @account, organization: org)
-
       email = @payload["sub"].to_s.downcase.strip
       first_name, last_name = split_display_name(email)
+      license_number = "SSO-#{merchant_id.delete('-')}-#{@account.id}"
 
-      Practitioner.create!(
-        organization: org,
+      p = begin
+        Practitioner.create!(
+          organization: org,
+          account: @account,
+          first_name: first_name,
+          last_name: last_name,
+          email: email,
+          specialization: DEFAULT_SPECIALIZATION,
+          license_number: license_number,
+          clinical_role: "owner",
+          status: "active"
+        )
+      rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+        Practitioner.find_by!(organization: org, license_number: license_number)
+      end
+
+      p.update!(
         account: @account,
         first_name: first_name,
         last_name: last_name,
         email: email,
         specialization: DEFAULT_SPECIALIZATION,
-        license_number: "SSO-#{merchant_id.delete('-')}-#{@account.id}",
         clinical_role: "owner",
         status: "active"
       )
