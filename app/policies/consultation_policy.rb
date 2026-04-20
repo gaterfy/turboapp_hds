@@ -5,6 +5,7 @@
 # assistant   – no access to clinical content
 class ConsultationPolicy < ApplicationPolicy
   def index?   = admin? || practitioner?
+  def by_dossier? = index? # action custom `by_dossier` → Pundit appelle `by_dossier?`
   def show?    = admin? || practitioner?
   def create?  = practitioner?
   def update?  = practitioner? && record.editable?

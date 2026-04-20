@@ -32,6 +32,26 @@ class QuoteLineItem < ApplicationRecord
     }
   end
 
+  # Contrat JSON type turboapp `LigneDevis#to_json_api` (routes /api/v1/devis).
+  def to_logosw_json
+    {
+      id: id,
+      devis_id: quote_id,
+      acte_ccam_id: nil,
+      code_ccam: procedure_code,
+      libelle: label,
+      localisation: tooth_location,
+      honoraires: (unit_fee.to_d * quantity).to_f,
+      base_remboursement: reimbursement_base.to_f,
+      taux_remboursement: reimbursement_rate.to_f,
+      montant_rembourse: reimbursement_amount.to_f,
+      reste_a_charge: patient_share.to_f,
+      depassement: overage.to_f,
+      quantite: quantity,
+      position: position
+    }
+  end
+
   private
 
   def assert_quote_is_mutable

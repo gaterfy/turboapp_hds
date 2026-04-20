@@ -34,6 +34,7 @@ gem "rack-attack"
 gem "rack-cors"
 gem "pundit"
 gem "prawn"
+gem "prawn-table"
 # Prawn requires matrix; Ruby 3.1+ no longer bundles it as a default gem.
 gem "matrix"
 

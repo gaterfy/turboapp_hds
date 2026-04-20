@@ -17,6 +17,22 @@ module Api
         render_success consultations_payload(consultations)
       end
 
+      # GET /api/v1/consultations/by_dossier/:dossier_patient_id — alias turboapp Logosw
+      # (`dossier_patient_id` = id du PatientRecord côté HDS).
+      def by_dossier
+        patient_record = policy_scope(PatientRecord).find(params[:dossier_patient_id])
+        consultations = policy_scope(Consultation)
+                          .where(patient_record_id: patient_record.id)
+                          .includes(:practitioner, :appointment)
+                          .then { |s| filter_by_status(s) }
+                          .recent
+
+        authorize Consultation
+        audit "read", resource: Consultation,
+              metadata: { by_dossier: patient_record.id, count: consultations.size }
+        render_success consultations.map(&:as_api_json)
+      end
+
       def show
         authorize @consultation
         audit "read", resource: @consultation

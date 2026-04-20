@@ -47,6 +47,18 @@ module Api
         render_success @record.as_api_json
       end
 
+      # GET /api/v1/dossier_patients/by_patient/:patient_id — alias turboapp Logosw
+      def by_patient
+        record = policy_scope(PatientRecord).find_by!(patient_id: params[:patient_id])
+        authorize record, :by_patient?
+
+        audit "read", resource: record, metadata: { by_patient_id: params[:patient_id] }
+        render_success record.as_api_json
+      rescue ActiveRecord::RecordNotFound
+        render_error("not_found", "No clinical record for this patient in this organization",
+                     status: :not_found)
+      end
+
       private
 
       def set_patient_record

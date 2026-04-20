@@ -14,3 +14,8 @@
 # ActiveSupport::Inflector.inflections(:en) do |inflect|
 #   inflect.acronym "RESTful"
 # end
+
+# Évite `devis`.singularize => "devi" (clé de route erronée `devi_id` pour les nested resources).
+ActiveSupport::Inflector.inflections(:en) do |inflect|
+  inflect.uncountable %w[devis]
+end

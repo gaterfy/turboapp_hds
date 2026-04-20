@@ -89,7 +89,33 @@ class Quote < ApplicationRecord
       signed_at: signed_at,
       rejected_at: rejected_at,
       expired_at: expired_at,
+      treatment_plan_id: treatment_plan_id,
       line_items: line_items.order(:position).map(&:as_api_json),
+      created_at: created_at,
+      updated_at: updated_at
+    }
+  end
+
+  # Contrat JSON type turboapp `Devis#to_json_api` (routes /api/v1/devis).
+  def to_logosw_json
+    {
+      id: id,
+      dossier_patient_id: patient_record_id,
+      practitioner_id: practitioner_id,
+      plan_de_traitement_id: treatment_plan_id,
+      devis_number: quote_number,
+      status: status,
+      sent_at: sent_at,
+      signed_at: signed_at,
+      rejected_at: rejected_at,
+      expired_at: expired_at,
+      valid_until: valid_until,
+      total_honoraires: total_fees.to_f,
+      total_base_remboursement: total_reimbursement_base.to_f,
+      total_reste_a_charge: total_patient_share.to_f,
+      docuseal_submission_id: signature_submission_id,
+      notes: notes,
+      lignes: line_items.order(:position).map(&:to_logosw_json),
       created_at: created_at,
       updated_at: updated_at
     }

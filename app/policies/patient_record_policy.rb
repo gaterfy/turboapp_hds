@@ -6,6 +6,7 @@
 class PatientRecordPolicy < ApplicationPolicy
   def index?  = admin? || practitioner?
   def show?   = admin? || practitioner?
+  def by_patient? = show?
   def create? = practitioner?
   def update? = practitioner?
   def destroy? = false  # Records are never hard-deleted; use archive!

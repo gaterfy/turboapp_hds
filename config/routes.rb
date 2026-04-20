@@ -46,6 +46,9 @@ Rails.application.routes.draw do
         member { patch :archive }
       end
 
+      # Alias Logosw (turboapp) — dossier clinique par patient_id
+      get "dossier_patients/by_patient/:patient_id", to: "patient_records#by_patient"
+
       resources :appointments, only: %i[index show create update] do
         member { patch :cancel }
       end
@@ -59,6 +62,9 @@ Rails.application.routes.draw do
         end
       end
 
+      # Alias Logosw — liste des consultations pour un dossier (patient_record_id)
+      get "consultations/by_dossier/:dossier_patient_id", to: "consultations#by_dossier"
+
       # Treatment plans
       resources :treatment_plans, only: %i[index show create update] do
         member do
@@ -71,15 +77,37 @@ Rails.application.routes.draw do
                           controller: "treatment_plan_items"
       end
 
-      resources :quotes, only: %i[index show create update] do
+      resources :quotes, only: %i[index show create update destroy] do
         member do
-          patch :send_to_patient
-          patch :sign
-          patch :reject
+          get :pdf
+          # turboapp / client Logosw : POST ; API REST : PATCH également accepté
+          match :send_to_patient, via: %i[post patch]
+          match :sign, via: %i[post patch]
+          match :reject, via: %i[post patch]
           patch :expire
+        end
+        collection do
+          get "by_dossier/:dossier_patient_id", action: :by_patient_record, as: :by_dossier
+          get :pending_signature
         end
         resources :line_items, only: %i[create update destroy],
                                controller: "quote_line_items"
+      end
+
+      # Alias Logosw « devis » (turboapp) — même contrôleur et logique que `quotes`.
+      resources :devis, controller: "quotes", only: %i[index show create update destroy] do
+        member do
+          get :pdf
+          match :send_to_patient, via: %i[post patch]
+          match :sign, via: %i[post patch]
+          match :reject, via: %i[post patch]
+          patch :expire
+        end
+        collection do
+          get "by_dossier/:dossier_patient_id", action: :by_patient_record
+          get :pending_signature
+        end
+        resources :ligne_devis, only: %i[create destroy], controller: "quote_line_items"
       end
 
       resources :prescriptions, only: %i[index show create update] do
@@ -90,6 +118,17 @@ Rails.application.routes.draw do
         end
         resources :line_items, only: %i[create update destroy],
                                controller: "prescription_line_items"
+      end
+
+      # Catalogue CCAM — nomenclature nationale des actes médicaux.
+      # Miroir du turboapp `ActesCcamController` pour le client Flutter HDS.
+      resources :actes_ccam, only: %i[index show] do
+        collection do
+          get :search
+          get :categories
+          get :specialites
+          get :regroupements
+        end
       end
 
       # Tableau de bord analytics (même contrat JSON que turboapp Logosw)

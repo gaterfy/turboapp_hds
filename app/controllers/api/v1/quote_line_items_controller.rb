@@ -40,7 +40,8 @@ module Api
       private
 
       def set_quote
-        @quote = policy_scope(Quote).find(params[:quote_id])
+        qid = params[:quote_id].presence || params[:devis_id].presence || params[:devi_id]
+        @quote = policy_scope(Quote).find(qid)
       end
 
       def set_line_item
@@ -48,11 +49,43 @@ module Api
       end
 
       def line_item_params
-        params.require(:quote_line_item).permit(
+        raw = params[:quote_line_item].presence || params[:ligne_devis]
+        if raw.blank?
+          raise ActionController::ParameterMissing,
+                "param is missing or the value is empty: quote_line_item or ligne_devis"
+        end
+
+        permitted = raw.permit(
           :procedure_code, :label, :tooth_location, :quantity, :position,
           :unit_fee, :reimbursement_base, :reimbursement_rate,
-          :reimbursement_amount, :patient_share, :overage
+          :reimbursement_amount, :patient_share, :overage,
+          :libelle, :localisation, :code_ccam, :honoraires, :base_remboursement,
+          :taux_remboursement, :montant_rembourse, :reste_a_charge, :depassement,
+          :quantite
         )
+        normalize_line_item_params(permitted)
+      end
+
+      def normalize_line_item_params(p)
+        h = p.to_h.symbolize_keys
+        qty = (h[:quantite] || h[:quantity] || 1).to_i
+        qty = 1 if qty < 1
+        hon = BigDecimal((h[:honoraires] || h[:unit_fee]).to_s.presence || "0")
+        unit_fee = h[:unit_fee].present? ? BigDecimal(h[:unit_fee].to_s) : (hon / qty).round(2)
+
+        ActionController::Parameters.new(
+          label: (h[:libelle] || h[:label]).to_s.presence || "Acte",
+          tooth_location: (h[:localisation] || h[:tooth_location]).to_s.presence,
+          procedure_code: (h[:code_ccam] || h[:procedure_code]).to_s.presence,
+          quantity: qty,
+          position: (h[:position] || 0).to_i,
+          unit_fee: unit_fee,
+          reimbursement_base: BigDecimal((h[:base_remboursement] || h[:reimbursement_base]).to_s.presence || "0"),
+          reimbursement_rate: BigDecimal((h[:taux_remboursement] || h[:reimbursement_rate]).to_s.presence || "0"),
+          reimbursement_amount: BigDecimal((h[:montant_rembourse] || h[:reimbursement_amount]).to_s.presence || "0"),
+          patient_share: BigDecimal((h[:reste_a_charge] || h[:patient_share]).to_s.presence || "0"),
+          overage: BigDecimal((h[:depassement] || h[:overage]).to_s.presence || "0")
+        ).permit!
       end
     end
   end
